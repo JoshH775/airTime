@@ -36,12 +36,12 @@ class homeState extends State<home> {
 
   late GoogleMapController mapController;
   String searchText = "Search";
-  List<String> searchableTerms = [];
   late String mapStyle;
   late Future<String> responseStatus;
   List<Flight> flights = [];
   static const CameraPosition heathrow = CameraPosition(zoom: 5.917, target: LatLng(54.37621992593971, -1.9079618901014328));
   List<Marker> markers = [];
+  List<Airport> airports = [];
   bool airportsVisible = false;
 
 
@@ -54,16 +54,18 @@ class homeState extends State<home> {
         .loadString('assets/map-style.txt')
         .then((string) => {mapStyle = string});
     responseStatus=getFlights();
+    getAirports();
+
 
 
   }
 
-  void getAirports() async {
-    List<Airport> airports = await server.requestAirports();
+  void getAirports(){
     setState((){
+      airportsVisible=true;
       for (Airport airport in airports){
         Marker airportMarker = Marker(
-          markerId: MarkerId(airport.name+"- Airport"),
+          markerId: MarkerId(airport.gps+"- Airport"),
           position: LatLng(airport.lattitude,airport.longitude),
           infoWindow: InfoWindow(title: airport.name)
         );
@@ -74,12 +76,25 @@ class homeState extends State<home> {
   }
 
   void search() async {
-    Flight result = await Navigator.push(context, MaterialPageRoute(builder: (context) => searchPage(flights: flights)));
+    String responseText = "";
+    var result = await Navigator.push(context, MaterialPageRoute(builder: (context) => searchPage(searchData: [flights,airports])));
+    getAirports();
+    print(result.runtimeType);
     setState(() {
-      searchText=result.callSign.toString();
+      if (result.runtimeType == Airport){
+        searchText=result.gps;
+        responseText=result.gps;
+        print(responseText);
+      }
+      else{
+        searchText=result.callSign;
+        responseText=result.callSign;
+      }
     });
+    print("here");
     for (Marker marker in markers){
-      if (result.callSign == marker.markerId.value){
+      print(marker.markerId.value);
+      if (marker.markerId.value.contains(responseText)==true){
         mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: marker.position,zoom: 10)));
         mapController.showMarkerInfoWindow(marker.markerId);
       }
@@ -151,10 +166,9 @@ class homeState extends State<home> {
                     mapType: MapType.satellite,
                     cameraTargetBounds: CameraTargetBounds(LatLngBounds(southwest: LatLng(49.662111, -6.144732), northeast: LatLng(61.062128, -0.1557970))),
                     onMapCreated: (GoogleMapController controller) {
-                      setState(() {
+                      setState(() async {
                         mapController = controller;
-
-
+                        airports=await server.requestAirports();
                       });
                     },
                     onCameraMove: (CameraPosition position) {
@@ -215,13 +229,13 @@ class homeState extends State<home> {
             }
           }),
 
-          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomLeft, child: FloatingActionButton(child: Icon(Icons.flight_takeoff), onPressed: () { setState(() {
+          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomLeft, child: FloatingActionButton(heroTag: "airports", child: Icon(Icons.flight_takeoff), onPressed: () { setState(() {
             print(airportsVisible);
             airportToggle();
           });},
           ))),
 
-          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomRight, child: FloatingActionButton(onPressed: () {  },
+          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomRight, child: FloatingActionButton(heroTag: "location", onPressed: () {  },
           child: Icon(Icons.my_location))))
 
         ]));

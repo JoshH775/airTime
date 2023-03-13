@@ -1,10 +1,12 @@
+import 'package:airtime/main.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 import 'server.dart';
 
 class searchPage extends StatefulWidget {
-  final List<Flight> flights;
+  final List<dynamic> searchData;
 
-  const searchPage({Key? key, required this.flights}) : super(key: key);
+  const searchPage({Key? key, required this.searchData}) : super(key: key);
 
   @override
   State<searchPage> createState() => _searchPageState();
@@ -12,22 +14,37 @@ class searchPage extends StatefulWidget {
 
 class _searchPageState extends State<searchPage> {
 
-  void listToWidgets(List<Flight> list){
+
+  void listToWidgets(List<dynamic> list){
     setState(() {
       suggestionsWidgets = [];
-      for (Flight item in list){
-        suggestionsWidgets.add(Padding(padding: EdgeInsets.all(3), child: ElevatedButton(onPressed: (){Navigator.pop(context, item);}, child: Text(item.callSign.toString()))));
+      for (var item in list){
+
+        if (item.runtimeType == Airport){
+
+          suggestionsWidgets.add(Padding(padding: EdgeInsets.all(3), child: ElevatedButton(onPressed: (){Navigator.pop(context, item);}, child: Text("${item.name} / ${item.gps}"))));
+        }else{
+          suggestionsWidgets.add(Padding(padding: EdgeInsets.all(3), child: ElevatedButton(onPressed: (){Navigator.pop(context, item);}, child: Text(item.callSign.toString()))));
+        }
       }
+
     });
 
   }
 
-  void search(String text, List<Flight> list) {
-    List<Flight> toRemove = [];
+  void search(String text, List<dynamic> list) {
+    List<dynamic> toRemove = [];
     suggestions=list;
-    for (Flight item in suggestions){
-      if(item.callSign.toString().toLowerCase().contains(text)==false){
-        toRemove.add(item);
+    print(suggestions.length);
+    for (var item in suggestions){
+      if (item.runtimeType==Flight){
+        if(item.callSign.toString().toLowerCase().contains(text)==false){
+          toRemove.add(item);
+        }
+      }else{
+        if (item.name.toLowerCase().contains(text)==false && item.gps.toLowerCase().contains(text)==false && item.icao.toLowerCase().contains(text)==false){
+          toRemove.add(item);
+        }
       }
 
       var setSuggestions = Set.from(suggestions);
@@ -39,15 +56,16 @@ class _searchPageState extends State<searchPage> {
     }
   }
 
-  List<Flight> suggestions = [];
+  List<dynamic> suggestions = [];
   List<Widget> suggestionsWidgets = [];
+  List<dynamic> searchables = [];
 
   @override
-  void initState() {
+  void initState(){
     // TODO: implement initState
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) =>
-    (suggestions = widget.flights));
+    searchables.addAll(widget.searchData[0]);
+    searchables.addAll(widget.searchData[1]);
   }
 
   @override
@@ -56,7 +74,7 @@ class _searchPageState extends State<searchPage> {
     return Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(child: Column(children: [
-          TextField(onChanged: (text) {search(text, widget.flights);}, decoration: InputDecoration(hintText: "Search for callsign/icao24:")),
+          TextField(onChanged: (text) {search(text, searchables);}, decoration: InputDecoration(hintText: "Search for callsign/icao24:")),
           Expanded(child: Container(child: ListView(children: suggestionsWidgets,)))
 
         ])));

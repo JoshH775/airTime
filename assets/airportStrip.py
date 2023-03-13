@@ -6,8 +6,10 @@ def countryFilter(country):
     newInfo=[]
     for line in csv:
         values = line.split(",")
-        if values[8][1:3] == country and values[2]!='"closed"':
+        if values[8][1:3] == country and values[2]!='"closed"' and len(values[12]) == 6:
+            print(values[12])
             newInfo.append(line)
+
 
     csv.close()
     newCSV = open(country+"Airports.csv","w+",encoding="UTF-8")
