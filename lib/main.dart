@@ -16,6 +16,7 @@ Future<Uint8List?> getIconBytes(String assetPath, width) async{
   return (await frameInfo.image.toByteData(format: ui.ImageByteFormat.png))?.buffer.asUint8List();
 }
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MaterialApp(
@@ -39,7 +40,7 @@ class homeState extends State<home> {
   late String mapStyle;
   late Future<String> responseStatus;
   List<Flight> flights = [];
-  static const CameraPosition heathrow = CameraPosition(zoom: 5.917, target: LatLng(54.37621992593971, -1.9079618901014328));
+  static const CameraPosition heathrow = CameraPosition(zoom: 5.917, target: LatLng(54.37621992593971, -1.9079618901014328)); //initail camera position
   List<Marker> markers = [];
   List<Airport> airports = [];
   bool airportsVisible = false;
@@ -60,6 +61,16 @@ class homeState extends State<home> {
 
   }
 
+  void getPosition() async{
+    LatLng location = await server.getLocation();
+    setState(() {
+      Marker locationMarker = Marker(markerId: MarkerId("Location"), position: location, infoWindow: InfoWindow(title: "User"));
+      markers.add(locationMarker);
+      mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: location, zoom: 11)));
+      mapController.showMarkerInfoWindow(MarkerId("Location"));
+    });
+  }
+
   void getAirports(){
     setState((){
       airportsVisible=true;
@@ -75,10 +86,10 @@ class homeState extends State<home> {
 
   }
 
-  void search() async {
+  void search() async { //When search bar is pressed
     String responseText = "";
-    var result = await Navigator.push(context, MaterialPageRoute(builder: (context) => searchPage(searchData: [flights,airports])));
-    getAirports();
+    var result = await Navigator.push(context, MaterialPageRoute(builder: (context) => searchPage(searchData: [flights,airports]))); //Goes to search page and comes back with clicked marker
+    getAirports(); //gets airports again
     print(result.runtimeType);
     setState(() {
       if (result.runtimeType == Airport){
@@ -91,7 +102,7 @@ class homeState extends State<home> {
         responseText=result.callSign;
       }
     });
-    print("here");
+
     for (Marker marker in markers){
       print(marker.markerId.value);
       if (marker.markerId.value.contains(responseText)==true){
@@ -235,7 +246,7 @@ class homeState extends State<home> {
           });},
           ))),
 
-          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomRight, child: FloatingActionButton(heroTag: "location", onPressed: () {  },
+          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomRight, child: FloatingActionButton(heroTag: "location", onPressed: () { getPosition(); },
           child: Icon(Icons.my_location))))
 
         ]));
