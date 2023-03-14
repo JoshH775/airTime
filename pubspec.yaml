@@ -40,6 +40,7 @@ dependencies:
   csv: ^5.0.1
   google_maps_flutter: ^2.2.3
   path_provider: ^2.0.13
+  geolocator: ^9.0.2
 
 
 dev_dependencies:

@@ -23,9 +23,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:geolocator/geolocator.dart';
 
 List<double> mincoord=[49.662111, -6.144732]; //bottom left of the uk
 List<double> maxcoord=[61.062128, -0.1557970]; //top right of uk
@@ -86,6 +86,35 @@ class Airport{
 }
 
 class Server{
+
+  Future<LatLng> getLocation() async { //https://pub.dev/packages/geolocator
+    bool services = false;
+    LocationPermission permissions;
+    services = await Geolocator.isLocationServiceEnabled(); //Device's gps services
+    if (services==false){
+      return Future.error("Not enabled");
+    }
+    print("passed service");
+
+
+    permissions = await Geolocator.checkPermission(); //Once services are on, check if app has permissions by default
+    if (permissions == LocationPermission.denied){
+      permissions = await Geolocator.requestPermission(); //Ask for permissions
+      if (permissions == LocationPermission.denied){ //No perms for us :(
+        return Future.error("Perms denied");
+      }
+    }
+
+    if (permissions == LocationPermission.deniedForever){
+      return Future.error("Denied forever");
+    }
+
+    Position currentPosition = await Geolocator.getCurrentPosition();
+    return LatLng(currentPosition.latitude, currentPosition.longitude);
+
+  }
+
+
 
   List<dynamic> nullCheck(flightAsList){
     List<dynamic> errorFallback = ['N/A','N/A','N/A',0,0,0.0,0.0,0.0,false,0.0,0.0,0.0,[0],0.0,'N/A',false,0];
