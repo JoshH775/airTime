@@ -26,6 +26,9 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart';
 
 List<double> mincoord=[49.662111, -6.144732]; //bottom left of the uk
 List<double> maxcoord=[61.062128, -0.1557970]; //top right of uk
@@ -94,10 +97,8 @@ class Server{
     if (services==false){
       return Future.error("Not enabled");
     }
-    print("passed service");
 
-
-    permissions = await Geolocator.checkPermission(); //Once services are on, check if app has permissions by default
+    permissions = await Geolocator.checkPermission(); //Once services are on, check if app has permissions already
     if (permissions == LocationPermission.denied){
       permissions = await Geolocator.requestPermission(); //Ask for permissions
       if (permissions == LocationPermission.denied){ //No perms for us :(
@@ -116,7 +117,7 @@ class Server{
 
 
 
-  List<dynamic> nullCheck(flightAsList){
+  List<dynamic> nullCheck(flightAsList){ //function to set a null value to its data type's default
     List<dynamic> errorFallback = ['N/A','N/A','N/A',0,0,0.0,0.0,0.0,false,0.0,0.0,0.0,[0],0.0,'N/A',false,0];
     for (int i=0;i<flightAsList.length;i++){
       if (flightAsList[i]==null){
@@ -145,9 +146,9 @@ class Server{
     try{
       String rawCredentials = await PlatformAssetBundle().loadString("assets/credentials.txt");
       List<String> credentials=rawCredentials.split("\n");
-      print(credentials[0]);
-      print(credentials[1]);
+
       response=await http.get(Uri.parse('https://${credentials[0].trim()}:${credentials[1].trim()}@opensky-network.org/api/states/all?lamin=${mincoord[0]}&lomin=${mincoord[1]}&lamax=${maxcoord[0]}&lomax=${maxcoord[1]}'));
+
     }catch (e){
       print(e);
       response=await http.get(Uri.parse('https://opensky-network.org/api/states/all?lamin=${mincoord[0]}&lomin=${mincoord[1]}&lamax=${maxcoord[0]}&lomax=${maxcoord[1]}'));
@@ -155,6 +156,7 @@ class Server{
 
     print(response.statusCode);
     print(response.request);
+
     final Map parsed = jsonDecode(response.body.toString());
     List<Flight> flightList=[];
     for (var single in parsed['states']){
@@ -176,6 +178,7 @@ class Server{
       String? squawk = flight[14];
       bool isAlert = flight[15];
       int positionSource = flight[16];
+      
       Flight newflight=Flight(icao24, callSign, originCountry, lastPositionUpdate, lastContact, longitude, lattitude, baroAltitude, onGround, velocityOverGround, heading, verticalRate, sensorSerials, geoAltitude, squawk, isAlert, positionSource);
       flightList.add(newflight);
     }
@@ -192,5 +195,26 @@ class Server{
       airports.add(Airport.fromCSVLine(csv[i]));
     }
     return airports;
+  }
+}
+
+class DBProvider {
+  Future<Database> openDB() async {
+    Directory dir =
+        await getApplicationDocumentsDirectory(); //Checks where the app is installed for the database
+    String path = join(dir.path, 'lists.db');
+
+    if (await databaseExists(path) == false) {
+      //If not found (likely first install), load from apk.
+      ByteData data = await rootBundle.load(join("assets", "lists.db"));
+      List<int> bytes =
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+
+      await File(path).writeAsBytes(bytes, flush: true);
+
+      return await openDatabase(path);
+    } else {
+      return await openDatabase(path);
+    }
   }
 }
