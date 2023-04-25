@@ -52,13 +52,14 @@ class Flight {
   bool isAlert;
   int positionSource;
 
+
   Map toMap() => {'icao24':icao24,'Callsign':callSign,'Manufacturing Country':originCountry,'Last Position Update':lastPositionUpdate,'Last Contact':lastContact,'Longitude':longitude,'Lattitude':lattitude,'Baro Altitude':baroAltitude,'On Ground?':onGround,'Velocity over ground':velocityOverGround,'Heading':heading,'Vertical rate':verticalRate,'Sensor Serials':sensorSerials,'Geo. Altitude':geoAltitude,'Squawk':squawk,'Is Alert?':isAlert,'Position Source':positionSource};
 
   List<dynamic> toList() => [icao24,callSign,originCountry,lastPositionUpdate,lastContact,longitude,lattitude,baroAltitude,onGround,velocityOverGround,heading,verticalRate,sensorSerials,geoAltitude,squawk,isAlert,positionSource];
 
   @override
   String toString() {
-    return '$icao24, $callSign, $originCountry, $lastPositionUpdate, $lastContact, $longitude, $lattitude, $baroAltitude, $onGround, $velocityOverGround, $heading, $verticalRate, $sensorSerials, $geoAltitude, $squawk, $isAlert, $positionSource';
+    return '$icao24, $callSign, $originCountry, $lastPositionUpdate, $lastContact, $longitude, $lattitude, $baroAltitude, $onGround, $velocityOverGround, $heading, $verticalRate, $sensorSerials, $geoAltitude, $squawk, $isAlert, $positionSource ';
   }
 
   Flight( this.icao24, this.callSign, this.originCountry, this.lastPositionUpdate, this.lastContact, this.longitude, this.lattitude, this.baroAltitude, this.onGround, this.velocityOverGround, this.heading, this.verticalRate, this.sensorSerials, this.geoAltitude, this.squawk, this.isAlert,this.positionSource);
@@ -118,7 +119,7 @@ class Server{
 
 
   List<dynamic> nullCheck(flightAsList){ //function to set a null value to its data type's default
-    List<dynamic> errorFallback = ['N/A','N/A','N/A',0,0,0.0,0.0,0.0,false,0.0,0.0,0.0,[0],0.0,'N/A',false,0];
+    List<dynamic> errorFallback = ['N/A','N/A','N/A',0,0,0.0,0.0,0.0,false,0.0,0.0,0.0,[0],0.0,'N/A',false,0,'N/A'];
     for (int i=0;i<flightAsList.length;i++){
       if (flightAsList[i]==null){
         flightAsList[i]=errorFallback[i];
@@ -127,19 +128,19 @@ class Server{
     return flightAsList;
   }
 
-  List<Flight> fromJson(){
-    File file = File('snapshot.json');
-    var readJson = json.decode(file.readAsStringSync());;
-    List<Flight> flightlist=[];
+  // List<Flight> fromJson() async{
+  //   File file = File('snapshot.json');
+  //   var readJson = json.decode(file.readAsStringSync());;
+  //   List<Flight> flightlist=[];
 
-    for (Map item in readJson){ //turning each map in the json to a flight
-      List<dynamic> flight = nullCheck(item.values.toList());
-      Flight newFlight = Flight(flight[0],flight[1],flight[2],flight[3],flight[4],flight[5],flight[6],flight[7],flight[8],flight[9],flight[10],flight[11],flight[12],flight[13],flight[14],flight[15],flight[16]);
-      flightlist.add(newFlight);
-      }
+  //   for (Map item in readJson){ //turning each map in the json to a flight
+  //     List<dynamic> flight = nullCheck(item.values.toList());
+  //     Flight newFlight = Flight(flight[0],flight[1],flight[2],flight[3],flight[4],flight[5],flight[6],flight[7],flight[8],flight[9],flight[10],flight[11],flight[12],flight[13],flight[14],flight[15],flight[16],await DBProvider().getModel(flight[0]));
+  //     flightlist.add(newFlight);
+  //     }
 
-    return flightlist;
-    }
+  //   return flightlist;
+  //   }
 
   Future<List<Flight>> requestFlights() async{
     var response;
@@ -154,11 +155,13 @@ class Server{
       response=await http.get(Uri.parse('https://opensky-network.org/api/states/all?lamin=${mincoord[0]}&lomin=${mincoord[1]}&lamax=${maxcoord[0]}&lomax=${maxcoord[1]}'));
     }
 
-    print(response.statusCode);
-    print(response.request);
-
+    // print(response.statusCode);
+    // print(response.request);
+  
     final Map parsed = jsonDecode(response.body.toString());
+    
     List<Flight> flightList=[];
+    
     for (var single in parsed['states']){
       List<dynamic> flight=nullCheck(single);
       String icao24 = flight[0];
@@ -179,9 +182,12 @@ class Server{
       bool isAlert = flight[15];
       int positionSource = flight[16];
       
+      
       Flight newflight=Flight(icao24, callSign, originCountry, lastPositionUpdate, lastContact, longitude, lattitude, baroAltitude, onGround, velocityOverGround, heading, verticalRate, sensorSerials, geoAltitude, squawk, isAlert, positionSource);
       flightList.add(newflight);
+      
     }
+
 
     return flightList;
   }
@@ -216,5 +222,12 @@ class DBProvider {
     } else {
       return await openDatabase(path);
     }
+  }
+
+  Future<dynamic> getModel(String icao24) async{
+    Database db = await openDB();
+    var make = await db.rawQuery("SELECT manufacturername || ' ' || model from aircraft where icao24 = '$icao24'");
+    return make;
+
   }
 }

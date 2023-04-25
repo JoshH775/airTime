@@ -60,7 +60,9 @@ class homeState extends State<home> {
   }
 
   Future<String> getFlights() async {
+
     List<Flight> response = await server.requestFlights();
+
     final icon = await BitmapDescriptor.fromBytes(await getIconBytes("assets/flight.png",55) as Uint8List);
     if (response.isNotEmpty) {
       setState(() {
@@ -172,9 +174,9 @@ class homeState extends State<home> {
                     mapType: MapType.satellite,
                     //cameraTargetBounds: CameraTargetBounds(LatLngBounds(southwest: const LatLng(49.662111, -6.144732), northeast: const LatLng(61.062128, -0.1557970))),
                     onMapCreated: (GoogleMapController controller) {
-                      setState(() async {
+                      setState(()  {
                         mapController = controller;
-                        airports=await server.requestAirports();
+                        
                       });
                     },
                     onCameraMove: (CameraPosition position) {
