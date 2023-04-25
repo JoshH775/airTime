@@ -174,8 +174,9 @@ class homeState extends State<home> {
                     mapType: MapType.satellite,
                     //cameraTargetBounds: CameraTargetBounds(LatLngBounds(southwest: const LatLng(49.662111, -6.144732), northeast: const LatLng(61.062128, -0.1557970))),
                     onMapCreated: (GoogleMapController controller) {
-                      setState(()  {
+                      setState(()  async{
                         mapController = controller;
+                        airports = await server.requestAirports();
                         
                       });
                     },
