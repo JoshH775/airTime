@@ -41,6 +41,7 @@ dependencies:
   google_maps_flutter: ^2.2.3
   path_provider: ^2.0.13
   geolocator: ^9.0.2
+  sqflite: ^2.2.6
 
 
 dev_dependencies:
@@ -67,6 +68,7 @@ flutter:
 
   assets:
     - assets/snapshot.json
+    - assets/aircraftDatabaseApril23.db
     - assets/flight.png
     - assets/map-style.txt
     - assets/GBAirports.csv

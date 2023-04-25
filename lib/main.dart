@@ -5,16 +5,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'searchpage.dart';
 import 'server.dart';
 import 'dart:ui' as ui;
-//TODO
-//1. Set minmax zoom
+
 Server server = Server();
 
-Future<Uint8List?> getIconBytes(String assetPath, width) async{
-  ByteData assetData = await rootBundle.load(assetPath);
-  var codec = await ui.instantiateImageCodec(assetData.buffer.asUint8List(),targetWidth: width);
-  ui.FrameInfo frameInfo = await codec.getNextFrame();
-  return (await frameInfo.image.toByteData(format: ui.ImageByteFormat.png))?.buffer.asUint8List();
-}
 
 
 void main() async {
@@ -51,93 +44,27 @@ class homeState extends State<home> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    rootBundle
-        .loadString('assets/map-style.txt')
-        .then((string) => {mapStyle = string});
     responseStatus=getFlights();
     getAirports();
-
-
-
   }
 
-  void getPosition() async{
+//function to animate the camera to the user's position
+  void getPosition() async{ 
     LatLng location = await server.getLocation();
     setState(() {
-      Marker locationMarker = Marker(markerId: MarkerId("Location"), position: location, infoWindow: InfoWindow(title: "User"));
+      Marker locationMarker = Marker(markerId: const MarkerId("Location"), position: location, infoWindow: const InfoWindow(title: "User"));
       markers.add(locationMarker);
       mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: location, zoom: 11)));
-      mapController.showMarkerInfoWindow(MarkerId("Location"));
+      mapController.showMarkerInfoWindow(const MarkerId("Location"));
     });
-  }
-
-  void getAirports(){
-    setState((){
-      airportsVisible=true;
-      for (Airport airport in airports){
-        Marker airportMarker = Marker(
-          markerId: MarkerId(airport.gps+"- Airport"),
-          position: LatLng(airport.lattitude,airport.longitude),
-          infoWindow: InfoWindow(title: airport.name)
-        );
-        markers.add(airportMarker);
-      }
-    });
-
-  }
-
-  void search() async { //When search bar is pressed
-    String responseText = "";
-    var result = await Navigator.push(context, MaterialPageRoute(builder: (context) => searchPage(searchData: [flights,airports]))); //Goes to search page and comes back with clicked marker
-    getAirports(); //gets airports again
-    print(result.runtimeType);
-    setState(() {
-      if (result.runtimeType == Airport){
-        searchText=result.gps;
-        responseText=result.gps;
-        print(responseText);
-      }
-      else{
-        searchText=result.callSign;
-        responseText=result.callSign;
-      }
-    });
-
-    for (Marker marker in markers){
-      print(marker.markerId.value);
-      if (marker.markerId.value.contains(responseText)==true){
-        mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: marker.position,zoom: 10)));
-        mapController.showMarkerInfoWindow(marker.markerId);
-      }
-    }
-  }
-
-  void airportToggle(){
-    if (airportsVisible==true){
-      setState(() {
-        airportsVisible=false;
-        List<Marker> toRemove = [];
-        for (Marker marker in markers){
-          if (marker.markerId.value.contains("Airport")){
-            toRemove.add(marker);
-          }
-        }
-        var markersSet = Set.from(markers);
-        var airportsSet = Set.from(toRemove);
-        markers=List.from(markersSet.difference(airportsSet));
-      });
-    }else{
-      setState(() {
-        airportsVisible=true;
-        getAirports();
-      });
-    }
   }
 
   Future<String> getFlights() async {
-    final icon = await BitmapDescriptor.fromBytes(await getIconBytes("assets/flight.png",55) as Uint8List);
+
     List<Flight> response = await server.requestFlights();
-    if (response.length > 0) {
+
+    final icon = await BitmapDescriptor.fromBytes(await getIconBytes("assets/flight.png",55) as Uint8List);
+    if (response.isNotEmpty) {
       setState(() {
         flights = response;
         for (var flight in flights) {
@@ -160,26 +87,97 @@ class homeState extends State<home> {
     }
 
   }
+  void getAirports(){ //Draws markers onto the map
+    setState((){
+      airportsVisible=true;
+      for (Airport airport in airports){
+        Marker airportMarker = Marker(
+          markerId: MarkerId("${airport.gps}- Airport"),
+          position: LatLng(airport.lattitude,airport.longitude),
+          infoWindow: InfoWindow(title: airport.name)
+        );
+        markers.add(airportMarker);
+      }
+    });
+
+  }
+
+  void search() async { //When search bar is pressed
+    String responseText = "";
+    var result = await Navigator.push(context, MaterialPageRoute(builder: (context) => searchPage(searchData: [flights,airports]))); //Goes to search page and comes back with clicked marker
+    getAirports(); //makes airports visible again incase they searched for an airport
+
+    setState(() {
+      if (result.runtimeType == Airport){ //If search results is airport
+        searchText=result.gps;
+        responseText=result.gps;
+        print(responseText);
+      }
+      else{ //otherwise the search results is a flight
+        searchText=result.callSign;
+        responseText=result.callSign;
+      }
+    });
+
+    for (Marker marker in markers){
+      if (marker.markerId.value.contains(responseText)==true){ //searches for an existing marker to navigate the camera to
+        mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: marker.position,zoom: 10)));
+        mapController.showMarkerInfoWindow(marker.markerId);
+      }
+    }
+  }
+
+  void airportToggle(){
+    if (airportsVisible==true){
+      setState(() {
+        airportsVisible=false;
+        List<Marker> toRemove = [];
+        for (Marker marker in markers){ //removes all markers that relate to airports
+          if (marker.markerId.value.contains("Airport")){
+            toRemove.add(marker);
+          }
+        }
+        var markersSet = Set.from(markers);
+        var airportsSet = Set.from(toRemove);
+        markers=List.from(markersSet.difference(airportsSet));
+      });
+    }else{
+      setState(() {
+        airportsVisible=true;
+        getAirports();
+      });
+    }
+  }
+
+
+
+  Future<Uint8List?> getIconBytes(String assetPath, width) async{
+  ByteData assetData = await rootBundle.load(assetPath);
+  var codec = await ui.instantiateImageCodec(assetData.buffer.asUint8List(),targetWidth: width);
+  ui.FrameInfo frameInfo = await codec.getNextFrame();
+  return (await frameInfo.image.toByteData(format: ui.ImageByteFormat.png))?.buffer.asUint8List();
+}
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
         body: Stack(children: [
+
+          //MAPS WIDGET
           Align(
               alignment: Alignment.center,
               child: Container(
                   child: GoogleMap(
-
                     rotateGesturesEnabled: false,
                     initialCameraPosition: heathrow,
                     zoomControlsEnabled: false,
                     mapType: MapType.satellite,
-                    cameraTargetBounds: CameraTargetBounds(LatLngBounds(southwest: LatLng(49.662111, -6.144732), northeast: LatLng(61.062128, -0.1557970))),
+                    //cameraTargetBounds: CameraTargetBounds(LatLngBounds(southwest: const LatLng(49.662111, -6.144732), northeast: const LatLng(61.062128, -0.1557970))),
                     onMapCreated: (GoogleMapController controller) {
-                      setState(() async {
+                      setState(()  async{
                         mapController = controller;
-                        airports=await server.requestAirports();
+                        airports = await server.requestAirports();
+                        
                       });
                     },
                     onCameraMove: (CameraPosition position) {
@@ -187,6 +185,8 @@ class homeState extends State<home> {
                     },
                     markers: Set<Marker>.of(markers),
                   ))),
+
+          //REFRESH BUTTON
           Align(
               alignment: const Alignment(0, 0.9),
               child: ElevatedButton.icon(
@@ -208,8 +208,10 @@ class homeState extends State<home> {
                     shape: const StadiumBorder()),
               )),
 
+
+          //SEARCH BUTTON
           Align(
-              alignment: Alignment(0, -0.87),
+              alignment: const Alignment(0, -0.87),
               child: ElevatedButton.icon(
                 onPressed: () {search();},
                 icon: const Icon(
@@ -230,24 +232,29 @@ class homeState extends State<home> {
                     )),
               )),
 
+
+          //CIRCULAR PROGRESS INDICATOR
           FutureBuilder(future: responseStatus, builder: (context,snapshot){
             if (snapshot.connectionState==ConnectionState.waiting){
               return const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator());
             }else if (snapshot.data==null){
-              return Padding(padding: EdgeInsets.all(5),child: Align(alignment: Alignment.bottomCenter, child: Text("Response: Unsuccessful")));
+              return const Padding(padding: EdgeInsets.all(5),child: Align(alignment: Alignment.bottomCenter, child: Text("Response: Unsuccessful")));
             }else{
-              return Padding(padding: EdgeInsets.all(5),child: Align(alignment: Alignment.bottomCenter, child: Text("Response: ${snapshot.data}")));
+              return Padding(padding: const EdgeInsets.all(5),child: Align(alignment: Alignment.bottomCenter, child: Text("Response: ${snapshot.data}")));
             }
           }),
 
-          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomLeft, child: FloatingActionButton(heroTag: "airports", child: Icon(Icons.flight_takeoff), onPressed: () { setState(() {
-            print(airportsVisible);
+
+          //AIRPORTS BUTTON
+          Padding(padding: const EdgeInsets.all(10), child: Align(alignment: Alignment.bottomLeft, child: FloatingActionButton(heroTag: "airports", child: const Icon(Icons.flight_takeoff), onPressed: () { setState(() {
             airportToggle();
           });},
           ))),
 
-          Padding(padding: EdgeInsets.all(10), child: Align(alignment: Alignment.bottomRight, child: FloatingActionButton(heroTag: "location", onPressed: () { getPosition(); },
-          child: Icon(Icons.my_location))))
+
+          //LOCATION BUTTON
+          Padding(padding: const EdgeInsets.all(10), child: Align(alignment: Alignment.bottomRight, child: FloatingActionButton(heroTag: "location", onPressed: () { getPosition(); },
+          child: const Icon(Icons.my_location))))
 
         ]));
   }
