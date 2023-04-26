@@ -1,3 +1,3 @@
-https://opensky-network.org/api/metadata/aircraft/icao/400efd
+https://opensky-network.org/api/metadata/aircraft/icao
 
 https://opensky-network.org/api/states/all?lamin=49.662111&lomin=-6.144732&lamax=61.062128&lomax=-0.155797

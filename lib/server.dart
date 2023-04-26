@@ -26,7 +26,7 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
-import 'package:sqflite/sqflite.dart';
+
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 
@@ -142,6 +142,22 @@ class Server{
   //   return flightlist;
   //   }
 
+  Future<List<String>> getModel(String icao24) async{
+      String rawCredentials = await PlatformAssetBundle().loadString("assets/credentials.txt");
+      List<String> credentials=rawCredentials.split("\n");
+    var response = await http.get(Uri.parse('https://${credentials[0].trim()}:${credentials[1].trim()}@opensky-network.org/api/metadata/aircraft/icao/${icao24}'));
+    var map = jsonDecode(response.body.toString());
+
+    String model = map["model"];
+    String operator = map["owner"];
+  
+
+    return [
+      model.length < 1? "Model not specified" : model,
+      operator.length < 1? "Operator not specified" : operator
+    ];
+  }
+
   Future<List<Flight>> requestFlights() async{
     var response;
     try{
@@ -204,30 +220,3 @@ class Server{
   }
 }
 
-class DBProvider {
-  Future<Database> openDB() async {
-    Directory dir =
-        await getApplicationDocumentsDirectory(); //Checks where the app is installed for the database
-    String path = join(dir.path, 'lists.db');
-
-    if (await databaseExists(path) == false) {
-      //If not found (likely first install), load from apk.
-      ByteData data = await rootBundle.load(join("assets", "lists.db"));
-      List<int> bytes =
-          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-
-      await File(path).writeAsBytes(bytes, flush: true);
-
-      return await openDatabase(path);
-    } else {
-      return await openDatabase(path);
-    }
-  }
-
-  Future<dynamic> getModel(String icao24) async{
-    Database db = await openDB();
-    var make = await db.rawQuery("SELECT manufacturername || ' ' || model from aircraft where icao24 = '$icao24'");
-    return make;
-
-  }
-}
